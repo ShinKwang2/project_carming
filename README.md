@@ -52,20 +52,20 @@
 - 라즈베리파이와 아두이노의 UART통신으로 NeoPixel을 이용한 후미등 구현
 
 ## 	🚩Carming 상세페이지
-![Carming 배포.png](./Docs/상세페이지/앱 배포상황.png)
-![랜딩페이지.png](./Docs/상세페이지/랜딩 페이지.png)
-![로그인 회원가입.png](./Docs/상세페이지/로그인 회원가입.png)
-![메인화면.png](./Docs/상세페이지/메인 화면.png)
-![차량호출.png](./Docs/상세페이지/차량호출.png)
-![여정완료.png](./Docs/상세페이지/여정 완료 화면.png)
+![distribution.png](Docs/detail/distribution.png)
+![rending_page.png](Docs/detail/rending_page.png)
+![signup_login.png](Docs/detail/signup_login.png)
+![main.png](Docs/detail/main.png)
+![call_car.png](Docs/detail/call_car.png)
+![complete_journey.png](Docs/detail/complete_journey.png)
 
 ## 	🚩주요 기술
 
 [기능명세서](https://lab.ssafy.com/s08-mobility-autodriving-sub1/S08P21A408/-/blob/2324b6a3f21ab1c4daab91d62235f1a0ba81d2f3/docs/%EA%B8%B0%EB%8A%A5%EB%AA%85%EC%84%B8%EC%84%9C.png)
 
 ---
-![시스템 아키텍쳐.png](./Docs/시스템 아키텍쳐.png)
-![redis를 이용한 통신 시스템 아키텍쳐.png](./Docs/통신 아키텍쳐.png)
+![system_architecture.png](Docs/system_architecture.png)
+![network_architecture.png](Docs/network_architecture.png)
 
 
 
