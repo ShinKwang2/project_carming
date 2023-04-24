@@ -33,9 +33,3 @@ spring:
         one-indexed-parameters: true
 server:
   port: 5000
-
-# naver-sms
-#key:
-#  service: ncp:sms:kr:297853391013:carming
-#  access: cAeEXzNhz9oRCqJJJlcr
-#  secret: lKl7HkNpeuwjP9U6W6FIZJxja5edE4mLMY4fFimj
