@@ -3,17 +3,17 @@ spring:
     import: naver-sms.properties
 
   datasource:
-    url: jdbc:mysql://j8a408.p.ssafy.io:3306/carming
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: your-url
+    driver-class-name: your-url
     username: root
-    password: carming123!
+    password: your-password
 
   redis:
-    host: j8a408.p.ssafy.io
-    port: 6379
-    password: carming123
+    host: your-url
+    port: your-port
+    password: your-password
     sentinel:
-      password: carming123
+      password: your-password
 
 
   # ddl-auto: create -> Entity에 맞게 자동으로 테이블 및 필드 생성 [배포에선 사용 X]
