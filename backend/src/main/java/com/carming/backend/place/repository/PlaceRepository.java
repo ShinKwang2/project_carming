@@ -35,4 +35,7 @@ public interface PlaceRepository extends JpaRepository<Place, Long>, PlaceReposi
                                       @Param("category") String category,
                                       @Param("limit") Long limit,
                                       @Param("lastPlaceId") Long lastPlaceId);
+
+    @Query("SELECT p.id FROM Place p WHERE p.id IN :ids")
+    List<Long> existsAllByIds(@Param("ids") List<Long> ids);
 }

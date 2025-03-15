@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +25,8 @@ import static com.carming.backend.tag.domain.QTag.tag;
 @RequiredArgsConstructor
 public class PlaceRepositoryImpl implements PlaceRepositoryCustom {
 
+    @PersistenceContext
+    private final EntityManager entityManager;
     private final JPAQueryFactory queryFactory;
 
     @Override
@@ -122,6 +126,11 @@ public class PlaceRepositoryImpl implements PlaceRepositoryCustom {
                 .from(place)
                 .where(place.id.in(placeKeys))
                 .fetch();
+    }
+
+    @Override
+    public Place getProxy(Long placeId) {
+        return entityManager.getReference(Place.class, placeId);
     }
 
     private BooleanExpression regionEq(List<String> regions) {

@@ -22,4 +22,6 @@ public interface PlaceRepositoryCustom {
     List<String> findPlaceNamesById(List<Long> placeKeys);
 
     List<String> findRegionsById(List<Long> placeKeys);
+
+    Place getProxy(Long placeId);
 }

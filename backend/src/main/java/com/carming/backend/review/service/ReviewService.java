@@ -8,7 +8,6 @@ import com.carming.backend.member.exception.MemberNotFound;
 import com.carming.backend.member.repository.MemberRepository;
 import com.carming.backend.place.domain.Place;
 import com.carming.backend.place.domain.PlaceTag;
-import com.carming.backend.place.exception.PlaceNotFound;
 import com.carming.backend.place.repository.PlaceRepository;
 import com.carming.backend.place.repository.PlaceTagRepository;
 import com.carming.backend.review.domain.Review;
@@ -17,13 +16,14 @@ import com.carming.backend.review.dto.request.ReviewRequestDto;
 import com.carming.backend.review.dto.response.ReviewResponseDto;
 import com.carming.backend.review.repository.ReviewRepository;
 import com.carming.backend.review.repository.ReviewTagRepository;
+import com.carming.backend.place.repository.PlaceTodayRateRepository;
 import com.carming.backend.tag.domain.Tag;
 import com.carming.backend.tag.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -40,6 +40,8 @@ public class ReviewService {
     private final TagRepository tagRepository;
 
     private final ReviewTagRepository reviewTagRepository;
+
+    private final PlaceTodayRateRepository placeTodayRateRepository;
 
     private final PlaceRepository placeRepository;
 
@@ -75,16 +77,35 @@ public class ReviewService {
         }
         // 리뷰 태그 저장
 
+        // 리뷰 별점 저장
+        LocalDateTime now = LocalDateTime.now();
+        List<Long> reviewIds = request.getPlaceReviews().stream()
+                .map(ReviewRequestDto.PlaceReviewRequest::getPlaceId)
+                .collect(Collectors.toList());
+        List<Long> existingIds = placeRepository.existsAllByIds(reviewIds);
         request.getPlaceReviews().stream()
+                .filter(placeReview -> existingIds.contains(placeReview.getPlaceId()))
                 .forEach(placeReview -> {
-                    Place foundPlace = placeRepository.findById(placeReview.getPlaceId())
-                            .orElseThrow(PlaceNotFound::new); //Place 조회
-                    foundPlace.addRating(placeReview.getPlaceRating());
+                    placeTodayRateRepository.increase(now, placeReview.getPlaceId(), placeReview.getPlaceRating());
                     tagRepository.findAllById(placeReview.getPlaceTags()).stream()
-                            .forEach(tag -> {
-                                placeTagRepository.save(new PlaceTag(foundPlace, tag)); //Place 태그 조회 및 저장
-                            });
+                            .forEach(tag -> placeTagRepository.save(
+                                    new PlaceTag(
+                                            getPlaceProxy(placeReview.getPlaceId()),
+                                            tag
+                                    ))
+                            );
                 });
+
+//        request.getPlaceReviews().stream()
+//                .forEach(placeReview -> {
+//                    Place foundPlace = placeRepository.findById(placeReview.getPlaceId())
+//                            .orElseThrow(PlaceNotFound::new); //Place 조회
+//                    foundPlace.addRating(placeReview.getPlaceRating());
+//                    tagRepository.findAllById(placeReview.getPlaceTags()).stream()
+//                            .forEach(tag -> {
+//                                placeTagRepository.save(new PlaceTag(foundPlace, tag)); //Place 태그 조회 및 저장
+//                            });
+//                });
 
         return savedReview.getId();
     }
@@ -129,5 +150,9 @@ public class ReviewService {
                 .courseRating(request.getCourseReview().getCourseRating())
                 .content(request.getCourseReview().getContent())
                 .build();
+    }
+
+    private Place getPlaceProxy(Long placeId) {
+        return placeRepository.getProxy(placeId);
     }
 }
