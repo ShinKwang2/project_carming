@@ -1,124 +1,79 @@
-## 🚗 장소추천 자율주행 앱 서비스
+## Carming Backend
 
+## 0. 지역별 파티셔닝
 
-## 	🚩 배경
+먼저 Place 테이블은 다음과 같다.
 
-차가 없어서, 새로운 장소에 대한 접근이 어려워서, 어디를 가야할지 몰라서! 여러가지 이유로 늘 같은 곳만 가셨나요?
-택시를 타도 기사님들이 말을 거는게 불편하거나 면허가 없어서 렌트카를 빌리지 못하시지는 않으셨나요?
-저희 서비스는 여러분을 위해 장소 추천과 코스 설정, 그리고 이동까지! 간편한 환경을 제공합니다.
+```sql
+CREATE TABLE place (
+    place_id BIGINT AUTO_INCREMENT,
+    place_name VARCHAR(100) NOT NULL,
+    place_tel VARCHAR(20),
+    place_category VARCHAR(50) NOT NULL,
+    place_lon DOUBLE,
+    place_lan DOUBLE,
+    place_region VARCHAR(50),
+    place_address VARCHAR(80),
+    place_rating_count INT DEFAULT 0,
+    place_rating_sum INT DEFAULT 0,
+    place_keyword VARCHAR(255),
+    place_image VARCHAR(255),
+    PRIMARY KEY (placed_id)
+);
+```
 
+장소라는 데이터 특성상 한번 정해지면 잘 바뀌지 않는다. 또한 이 데이터는 기본적으로 지속적으로 늘어날 수밖에 없다. 따라서 지역별로 Partition을 나누고자 한다. 어차피 기획한 서비스가 사용자가 선택한 구에서 장소를 추천하기 때문에 더더욱 파티셔닝을 하는 것이 좋다고 판단되었다.
 
-##  🚩 개요
+```sql
+    ...
+    place_image VARCHAR(255),
+    PRIMARY KEY (placed_id)
+) PARTITION BY LIST (place_region) (
+    PARTITION p_seoul_gangnam VALUES IN ('강남구'),
+    PARTITION p_seoul_gangbuk VALUES IN ('강북구'),
+    PARTITION p_seoul_gangdong VALUES IN ('강동구'),
+    PARTITION p_seoul_mapo VALUES IN ('마포구')
+    ...
+);
 
-저희 서비스에서는
-1. 자율주행 택시 호출이 가능합니다.
-2. 원하는 지역을 선택하면 장소 추천을 제공합니다.
-3. 즐긴 장소와 코스에 대한 리뷰를 남기고 다른 사람들의 평을 확인할 수 있습니다.
+```
 
-사용자들은 쉬운 접근성으로 이동 장소 설정부터 실제 이동까지 하나의 모바일 앱에서 해결할 수 있습니다.
+## 1. Covering Index를 이용한 조회 성능 개선
 
-## 	🚩주요 기능
+이제 각 구마다 별점이 높은 순서로 보여주어야 하는데, 기본적인 쿼리는 다음과 같다.
 
----
-사용자가 앱을 통해 원하는 지역들을 선택하면, 장소와 코스를 추천합니다.
-가상환경에서 사용자가 운전대를 잡지 않아도 원하는 목적지에 도착할 수 있는 자율주행 서비스를 제공합니다.
+```sql
+SELECT * FROM place
+  WHERE place_region = :region AND place_category = :category
+  ORDER BY place_rating_sum DESC
+  OFFSET :offset
+  LIMIT :limit;
+```
 
-## 	🚩기능별 세부 사항
+```java
+queryFactory
+  .selectFrom(place)
+  .where(regionEq(search.getRegion()), categoryEq(search.getCategory()))
+  .orderBy(place.ratingSum.desc())
+  .offset(search.getOffset())
+  .limit(search.getSize())
+  .fetch();
+```
 
----
-#### 장소와 경로 설정
-- 다양한 기준을 바탕으로 장소를 추천(사용자의 별점)
-- 카테고리별로 장소를 분류하여 사용자에게 제공
-- 경로를 추천 받을 수 있음
-- 선택한 경로에서 장소의 방문 순서를 변경할 수 있음
-- 경로를 지도에 표시하여 사용자에게 보여줌
+하지만 자율주행 시뮬레이터에서 제공되는 맵인 마포구만 해도 대표사진이 있는 장소 데이터가 15만 개, 대표사진이 없는 데이터를 포함하면 40만개를 넘어갔다. 일단 대표사진이 있는 데이터만 쓰기로 결정해서, 크게 문제가 되지는 않지만 **요구사항이 달라지면 언제든지 데이터가 기하급수적으로 늘어날 우려가 있다**.
 
-#### 실시간 위치 출력
-- 지도에 위치를 실시간으로 출력
-- 차량의 위치와 호출 위치 사이의 최적 경로를 생성한 후, 예상 소요 시간을 전송
+따라서 Covering Index를 사용하여 조회 속도를 줄이도록 할 것이다. 그리고 Covering Index로 생기는 트레이드 오프인 쓰기 부하를 어떻게 줄일지 생각해보자.
 
-#### 경로 생성
-- Dijkstra 알고리즘을 활용한 최단거리 경로 생성
+### 1️⃣ Index 만들기
 
-#### 마이페이지
-- 앱을 사용하는 동안의 기록들을 저장
-- 방문 장소에 대한 별점을 확인
-- 방문 경로에 대해 작성한 리뷰 확인
+현재 Place 리스트를 조회할 때 사용하는 조건은 다음과 같다.
 
-#### RC car
-- 가상환경에서의 주행과 동기화된 주행 상태 구현
-- 스피커를 부착하여 사용자의 플레이리스트 재생
-- 모터를 추가하여 승하차시 문의 움직임을 구현
-- 라즈베리파이와 아두이노의 UART통신으로 NeoPixel을 이용한 후미등 구현
+- place_region
+- place_category
+- place_rating_sum
 
-## 	🚩Carming 상세페이지
-![distribution.png](Docs/detail/distribution.png)
-![rending_page.png](Docs/detail/rending_page.png)
-![signup_login.png](Docs/detail/signup_login.png)
-![main.png](Docs/detail/main.png)
-![call_car.png](Docs/detail/call_car.png)
-![complete_journey.png](Docs/detail/complete_journey.png)
+이중에 rationg_sum의 경우 종종 바뀌겠지만, place_region과 place_category의 경우 거의 read-only에 가까울 정도로 자주 바뀌지 않는다. **따라서 인덱스는 아래와 같이 만든다**.
 
-## 	🚩주요 기술
-
-[기능명세서](https://lab.ssafy.com/s08-mobility-autodriving-sub1/S08P21A408/-/blob/2324b6a3f21ab1c4daab91d62235f1a0ba81d2f3/docs/%EA%B8%B0%EB%8A%A5%EB%AA%85%EC%84%B8%EC%84%9C.png)
-
----
-![system_architecture.png](Docs/system_architecture.png)
-![network_architecture.png](Docs/network_architecture.png)
-
-
-
-## 🙆 협업 툴
-
----
-
-- Git
-- Notion
-- JIRA
-- MatterMost
-- Webex
-
-## 🙆 협업 환경
-
----
-
-- Gitlab
-  - 코드 버전 관리
-  - Jira와 연동하여 일정 관리
-  - 커밋 컨벤션 준수
-- JIRA
-  - 매주 일정에 따른 업무를 할당하여 Sprint 진행
-  - JIRA 컨벤션 준수
-- 회의
-  - 아침마다 스크럼 회의 진행
-  - 주별로 전 파트 코드리뷰 진행
-  - 그라운드 룰 준수
-- Notion
-  - 각종 문서 아카이빙과 회의록 보관
-  - 기능명세서, 이해관계자, 유즈케이스 시나리오 등 문서 보관
-  - 코딩 컨벤션 정리
-  - 프로젝트 일정 정리
-  - 그라운드 룰 명시
-
-## 🙆  팀원 역할 분배
-
----
-- 주해린 : PM, Mobility,IoT
-- 심정윤 : Moblility,IoT
-- 조성환 : Moblility, 서기, 발표
-- 김인중 : Backend, Frontend, CI/CD
-- 이신광 : Backend리드
-- 오현규 : Frontend리드 , UI/UX
-
-
-
-
-## Feature List
-
-[Google Sheet를 통해 기능 명세서 보기](https://docs.google.com/spreadsheets/d/1_x7AEmibMF-szTzUB5i6ekQn2jWMi7hplkFVeeMDTS8/edit?usp=sharing)
-
-## Story Board
-
-[Figma를 통해 스토리 보드 보기](https://www.figma.com/signup?is_not_gen_0=true&resource_type=team)
-
+```sql
+CREATE INDEX idx_region_category_rating_sum_desc ON place (place_region, place_category, place_rating_sum DESC);
+```
