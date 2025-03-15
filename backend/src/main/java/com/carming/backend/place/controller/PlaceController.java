@@ -41,4 +41,15 @@ public class PlaceController {
     public ResponseEntity<PopularPlaceDetailDto> getPopularPlaceDetail(@PathVariable("id") Long placeId) {
         return ResponseEntity.ok(placeService.getPopularPlaceDetail(placeId));
     }
+
+    @GetMapping("/infinite-scroll")
+    public List<PlaceResponseDto> readAllInfiniteScroll(
+            @RequestParam("region") String region,
+            @RequestParam("category") String category,
+            @RequestParam("pageSize") Long pageSize,
+            @RequestParam(value = "lastPlaceId", required = false) Long lastPlaceId
+    ) {
+        return placeService.readAllInfiniteScroll(region, category, pageSize, lastPlaceId);
+    }
+
 }

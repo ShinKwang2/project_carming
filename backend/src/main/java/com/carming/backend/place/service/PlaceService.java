@@ -37,6 +37,15 @@ public class PlaceService {
         return placeRepository.findPopularPlaceDetail(placeId);
     }
 
+    public List<PlaceResponseDto> readAllInfiniteScroll(String region, String category, Long pageSize, Long lastPlaceId) {
+        List<Place> places = lastPlaceId == null ?
+                placeRepository.findAllInfiniteScroll(region, category, pageSize) :
+                placeRepository.findAllInfiniteScroll(region, category, pageSize, lastPlaceId);
+        return places.stream()
+                .map(PlaceResponseDto::from)
+                .collect(Collectors.toList());
+    }
+
     private List<PlaceResponseDto> findPlaces(PlaceSearch search) {
         List<Place> places = placeRepository.findPlaces(search);
         return places.stream()

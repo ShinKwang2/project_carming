@@ -70,7 +70,8 @@ public class PlaceRepositoryImpl implements PlaceRepositoryCustom {
 
     @Override
     public List<PopularPlaceListDto> findPopular(Long size) {
-        return queryFactory.select(Projections.fields(PopularPlaceListDto.class,
+        return queryFactory
+                .select(Projections.fields(PopularPlaceListDto.class,
                         place.id, place.image, place.name, place.address,
                         place.region, place.ratingSum, place.ratingCount))
                 .from(place)
