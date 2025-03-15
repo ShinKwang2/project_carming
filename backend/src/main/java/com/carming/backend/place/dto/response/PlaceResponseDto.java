@@ -53,6 +53,12 @@ public class PlaceResponseDto {
                 .build();
     }
 
+    public static PlaceResponseDto from(Place place, Integer todayRate) {
+        PlaceResponseDto response = from(place);
+        response.ratingSum += todayRate;
+        return response;
+    }
+
     @QueryProjection
     @Builder
     public PlaceResponseDto(Long id, String name, String tel, PlaceCategory category,
